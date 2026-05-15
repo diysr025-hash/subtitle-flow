@@ -8,11 +8,30 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const navigate = useNavigate();
 
-  const handleFiles = useCallback((files: FileList | null) => {
+  const handleFiles = useCallback(async(files: FileList | null) => {
     if (!files || files.length === 0) return;
     const f = files[0];
     setFile(f);
-    setTimeout(() => navigate({ to: "/editor" }), 600);
+    const formData = new FormData();
+
+formData.append("video", f);
+
+try {
+  const response = await fetch("/backend/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  console.log("Server response:", data);
+
+  if (data.success) {
+    navigate({ to: "/editor" });
+  }
+} catch (error) {
+  console.error("Upload failed:", error);
+}
   }, [navigate]);
 
   return (
