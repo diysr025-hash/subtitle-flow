@@ -8,30 +8,14 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const navigate = useNavigate();
 
-  const handleFiles = useCallback(async(files: FileList | null) => {
+  const handleFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
     const f = files[0];
     setFile(f);
-    const formData = new FormData();
-
-formData.append("video", f);
-
-try {
-  const response = await fetch("/backend/upload", {
-    method: "POST",
-    body: formData,
-  });
-
-  const data = await response.json();
-
-  console.log("Server response:", data);
-
-  if (data.success) {
-    navigate({ to: "/editor" });
-  }
-} catch (error) {
-  console.error("Upload failed:", error);
-}
+    // Simulate upload + navigate to editor in processing state
+    setTimeout(() => {
+      navigate({ to: "/editor", search: { name: f.name } as never });
+    }, 600);
   }, [navigate]);
 
   return (
@@ -43,8 +27,8 @@ try {
         "relative block w-full cursor-pointer rounded-2xl border-2 border-dashed transition-all overflow-hidden group",
         compact ? "p-8" : "p-12 md:p-16",
         dragging
-          ? "border-primary bg-primary/10 scale-[1.01]"
-          : "border-border bg-card/50 hover:border-primary/50 hover:bg-card",
+          ? "border-primary bg-primary/10 scale-[1.01] shadow-[var(--shadow-glow)]"
+          : "border-border/70 bg-card/40 hover:border-primary/50 hover:bg-card/70",
       )}
     >
       <input
@@ -53,9 +37,9 @@ try {
         className="sr-only"
         onChange={(e) => handleFiles(e.target.files)}
       />
-      <div className="absolute inset-0 bg-gradient-radial opacity-50 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-radial opacity-40 pointer-events-none" />
       <div className="relative flex flex-col items-center text-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-brand shadow-[var(--shadow-glow)] group-hover:scale-110 transition-transform">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-brand shadow-[var(--shadow-glow)] group-hover:scale-110 transition-transform duration-500">
           {file ? <FileVideo className="h-7 w-7 text-white" /> : <UploadCloud className="h-7 w-7 text-white" />}
         </div>
         <div>
@@ -63,7 +47,7 @@ try {
             {file ? file.name : "Drop your video here"}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {file ? "Processing… opening editor" : "MP4, MOV, WEBM up to 2GB · Hinglish ready"}
+            {file ? "Opening editor…" : "MP4, MOV, WEBM up to 2GB · Hinglish ready"}
           </p>
         </div>
         {!file && (
