@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -111,7 +112,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="dark" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+        <Outlet />
+        <Toaster theme="dark" position="bottom-right" />
+      </div>
     </QueryClientProvider>
   );
 }
