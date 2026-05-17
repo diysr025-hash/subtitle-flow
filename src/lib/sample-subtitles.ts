@@ -23,3 +23,54 @@ export function toSrt(subs: Subtitle[]) {
   };
   return subs.map((s, i) => `${i + 1}\n${fmt(s.start)} --> ${fmt(s.end)}\n${s.text}\n`).join("\n");
 }
+
+const parseTs = (ts: string) => {
+  const m = ts.trim().match(/(\d+):(\d+):(\d+)[,.](\d+)/);
+  if (!m) return 0;
+  return +m[1] * 3600 + +m[2] * 60 + +m[3] + +m[4] / 1000;
+};
+
+export function parseSrt(srt: string): Subtitle[] {
+  const blocks = srt.replace(/\r/g, "").split(/\n\n+/);
+  const out: Subtitle[] = [];
+  for (const block of blocks) {
+    const lines = block.split("\n").filter(Boolean);
+    if (!lines.length) continue;
+    const tsLine = lines.find((l) => l.includes("-->"));
+    if (!tsLine) continue;
+    const [a, b] = tsLine.split("-->");
+    const textLines = lines.slice(lines.indexOf(tsLine) + 1);
+    if (!textLines.length) continue;
+    out.push({
+      id: crypto.randomUUID(),
+      start: parseTs(a),
+      end: parseTs(b),
+      text: textLines.join(" ").trim(),
+    });
+  }
+  return out;
+}
+
+export function normalizeSubtitles(payload: unknown): Subtitle[] {
+  if (!payload) return [];
+  if (typeof payload === "string") return parseSrt(payload);
+  if (Array.isArray(payload)) {
+    return payload
+      .map((item: any, i: number) => ({
+        id: item.id?.toString() ?? crypto.randomUUID(),
+        start: Number(item.start ?? item.start_time ?? item.from ?? i * 2),
+        end: Number(item.end ?? item.end_time ?? item.to ?? i * 2 + 2),
+        text: String(item.text ?? item.caption ?? item.content ?? ""),
+      }))
+      .filter((s) => s.text);
+  }
+  if (typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    const candidates = [obj.subtitles, obj.srt, obj.text, obj.captions, obj.data, obj.result];
+    for (const c of candidates) {
+      const parsed = normalizeSubtitles(c);
+      if (parsed.length) return parsed;
+    }
+  }
+  return [];
+}
