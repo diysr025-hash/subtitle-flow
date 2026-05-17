@@ -33,19 +33,45 @@ function Editor() {
   const rafRef = useRef<number | undefined>(undefined);
   const lastTickRef = useRef<number>(0);
 
-  // Simulated generation pipeline
+  // Load real subtitles from upload (sessionStorage) — falls back to sample demo
   useEffect(() => {
-    if (!generating) return;
+    let cancelled = false;
+
+    const stored = typeof window !== "undefined"
+      ? sessionStorage.getItem("subtitleai:result")
+      : null;
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as { subs: Subtitle[] };
+        if (parsed.subs?.length) {
+          const stageTimer = setInterval(() => {
+            setStageIdx((i) => Math.min(i + 1, GENERATION_STAGES.length - 1));
+          }, 350);
+          const doneTimer = setTimeout(() => {
+            if (cancelled) return;
+            setSubs(parsed.subs);
+            setActiveId(parsed.subs[0].id);
+            setGenerating(false);
+          }, 1400);
+          return () => { clearInterval(stageTimer); clearTimeout(doneTimer); cancelled = true; };
+        }
+      } catch (e) {
+        console.error("Failed to parse stored subtitles", e);
+      }
+    }
+
     const stageTimer = setInterval(() => {
       setStageIdx((i) => Math.min(i + 1, GENERATION_STAGES.length - 1));
     }, 900);
     const doneTimer = setTimeout(() => {
+      if (cancelled) return;
       setSubs(sampleSubtitles);
       setActiveId(sampleSubtitles[0].id);
       setGenerating(false);
     }, 4800);
-    return () => { clearInterval(stageTimer); clearTimeout(doneTimer); };
-  }, [generating]);
+    return () => { clearInterval(stageTimer); clearTimeout(doneTimer); cancelled = true; };
+  }, []);
 
   const duration = subs.length ? Math.max(...subs.map((s) => s.end), 14) : 14;
 
