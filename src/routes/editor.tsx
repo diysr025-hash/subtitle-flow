@@ -185,18 +185,34 @@ function Editor() {
           <div className="space-y-4">
             <Card className="bg-card/60 border-border/60 overflow-hidden backdrop-blur">
               <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-                {/* Cinematic backdrop */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(0.72_0.22_305_/_0.25),transparent_60%)]" />
-                <motion.div
-                  className="absolute inset-0 opacity-40"
-                  animate={{ background: [
-                    "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
-                    "radial-gradient(circle at 80% 70%, oklch(0.78 0.18 200 / 0.35), transparent 50%)",
-                    "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
-                  ] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <VideoIcon className="h-16 w-16 text-white/10 relative" />
+                {videoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-contain bg-black"
+                    onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 0)}
+                    onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+                    onPlay={() => setPlaying(true)}
+                    onPause={() => setPlaying(false)}
+                    onEnded={() => setPlaying(false)}
+                  />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(0.72_0.22_305_/_0.25),transparent_60%)]" />
+                    <motion.div
+                      className="absolute inset-0 opacity-40"
+                      animate={{ background: [
+                        "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
+                        "radial-gradient(circle at 80% 70%, oklch(0.78 0.18 200 / 0.35), transparent 50%)",
+                        "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
+                      ] }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <VideoIcon className="h-16 w-16 text-white/10 relative" />
+                  </>
+                )}
 
                 {/* Generating overlay */}
                 <AnimatePresence>
