@@ -28,10 +28,21 @@ function Editor() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [generating, setGenerating] = useState(true);
   const [stageIdx, setStageIdx] = useState(0);
   const rafRef = useRef<number | undefined>(undefined);
   const lastTickRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = sessionStorage.getItem("uploadedVideoUrl");
+    if (url) setVideoUrl(url);
+  }, []);
+
+
 
   // Load real subtitles from upload (sessionStorage) — falls back to sample demo
   useEffect(() => {
@@ -73,9 +84,10 @@ function Editor() {
     return () => { clearInterval(stageTimer); clearTimeout(doneTimer); cancelled = true; };
   }, []);
 
-  const duration = subs.length ? Math.max(...subs.map((s) => s.end), 14) : 14;
+  const duration = videoDuration || (subs.length ? Math.max(...subs.map((s) => s.end), 14) : 14);
 
   useEffect(() => {
+    if (videoUrl) return;
     if (!playing) return;
     lastTickRef.current = performance.now();
     const tick = (now: number) => {
@@ -90,7 +102,14 @@ function Editor() {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [playing, duration]);
+  }, [playing, duration, videoUrl]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !videoUrl) return;
+    if (playing) v.play().catch(() => setPlaying(false));
+    else v.pause();
+  }, [playing, videoUrl]);
 
   const current = subs.find((s) => time >= s.start && time <= s.end);
   const active = subs.find((s) => s.id === activeId);
@@ -166,18 +185,34 @@ function Editor() {
           <div className="space-y-4">
             <Card className="bg-card/60 border-border/60 overflow-hidden backdrop-blur">
               <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-                {/* Cinematic backdrop */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(0.72_0.22_305_/_0.25),transparent_60%)]" />
-                <motion.div
-                  className="absolute inset-0 opacity-40"
-                  animate={{ background: [
-                    "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
-                    "radial-gradient(circle at 80% 70%, oklch(0.78 0.18 200 / 0.35), transparent 50%)",
-                    "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
-                  ] }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <VideoIcon className="h-16 w-16 text-white/10 relative" />
+                {videoUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-contain bg-black"
+                    onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 0)}
+                    onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+                    onPlay={() => setPlaying(true)}
+                    onPause={() => setPlaying(false)}
+                    onEnded={() => setPlaying(false)}
+                  />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,oklch(0.72_0.22_305_/_0.25),transparent_60%)]" />
+                    <motion.div
+                      className="absolute inset-0 opacity-40"
+                      animate={{ background: [
+                        "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
+                        "radial-gradient(circle at 80% 70%, oklch(0.78 0.18 200 / 0.35), transparent 50%)",
+                        "radial-gradient(circle at 20% 30%, oklch(0.72 0.22 305 / 0.35), transparent 50%)",
+                      ] }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <VideoIcon className="h-16 w-16 text-white/10 relative" />
+                  </>
+                )}
 
                 {/* Generating overlay */}
                 <AnimatePresence>
@@ -253,8 +288,8 @@ function Editor() {
                   )}
                 </AnimatePresence>
 
-                {/* Playback overlay */}
-                {!generating && (
+                {/* Playback overlay — only when no real video */}
+                {!generating && !videoUrl && (
                   <button
                     onClick={() => setPlaying((p) => !p)}
                     className="absolute inset-0 flex items-center justify-center group"
@@ -292,7 +327,11 @@ function Editor() {
                         initial={{ opacity: 0, scaleY: 0.6 }}
                         animate={{ opacity: 1, scaleY: 1 }}
                         whileHover={{ scaleY: 1.08 }}
-                        onClick={() => { setActiveId(s.id); setTime(s.start); }}
+                        onClick={() => {
+                          setActiveId(s.id);
+                          setTime(s.start);
+                          if (videoRef.current) videoRef.current.currentTime = s.start;
+                        }}
                         className={`absolute top-1 bottom-1 rounded transition-colors ${
                           s.id === activeId ? "bg-gradient-brand shadow-[var(--shadow-glow)]" : "bg-primary/30 hover:bg-primary/60"
                         }`}
@@ -344,7 +383,11 @@ function Editor() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      onClick={() => { setActiveId(s.id); setTime(s.start); }}
+                      onClick={() => {
+                        setActiveId(s.id);
+                        setTime(s.start);
+                        if (videoRef.current) videoRef.current.currentTime = s.start;
+                      }}
                       className={`w-full text-left p-4 flex gap-4 hover:bg-secondary/40 transition-colors ${
                         s.id === activeId ? "bg-secondary/60 border-l-2 border-primary" : ""
                       }`}
