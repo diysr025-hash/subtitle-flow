@@ -327,7 +327,11 @@ function Editor() {
                         initial={{ opacity: 0, scaleY: 0.6 }}
                         animate={{ opacity: 1, scaleY: 1 }}
                         whileHover={{ scaleY: 1.08 }}
-                        onClick={() => { setActiveId(s.id); setTime(s.start); }}
+                        onClick={() => {
+                          setActiveId(s.id);
+                          setTime(s.start);
+                          if (videoRef.current) videoRef.current.currentTime = s.start;
+                        }}
                         className={`absolute top-1 bottom-1 rounded transition-colors ${
                           s.id === activeId ? "bg-gradient-brand shadow-[var(--shadow-glow)]" : "bg-primary/30 hover:bg-primary/60"
                         }`}
