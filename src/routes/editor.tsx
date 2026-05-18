@@ -41,9 +41,8 @@ function Editor() {
     const url = sessionStorage.getItem("uploadedVideoUrl");
     if (url) setVideoUrl(url);
   }, []);
-  const [stageIdx, setStageIdx] = useState(0);
-  const rafRef = useRef<number | undefined>(undefined);
-  const lastTickRef = useRef<number>(0);
+
+
 
   // Load real subtitles from upload (sessionStorage) — falls back to sample demo
   useEffect(() => {
