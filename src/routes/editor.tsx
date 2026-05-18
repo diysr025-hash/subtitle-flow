@@ -383,7 +383,11 @@ function Editor() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      onClick={() => { setActiveId(s.id); setTime(s.start); }}
+                      onClick={() => {
+                        setActiveId(s.id);
+                        setTime(s.start);
+                        if (videoRef.current) videoRef.current.currentTime = s.start;
+                      }}
                       className={`w-full text-left p-4 flex gap-4 hover:bg-secondary/40 transition-colors ${
                         s.id === activeId ? "bg-secondary/60 border-l-2 border-primary" : ""
                       }`}
