@@ -28,7 +28,19 @@ function Editor() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [generating, setGenerating] = useState(true);
+  const [stageIdx, setStageIdx] = useState(0);
+  const rafRef = useRef<number | undefined>(undefined);
+  const lastTickRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = sessionStorage.getItem("uploadedVideoUrl");
+    if (url) setVideoUrl(url);
+  }, []);
   const [stageIdx, setStageIdx] = useState(0);
   const rafRef = useRef<number | undefined>(undefined);
   const lastTickRef = useRef<number>(0);
