@@ -84,9 +84,10 @@ function Editor() {
     return () => { clearInterval(stageTimer); clearTimeout(doneTimer); cancelled = true; };
   }, []);
 
-  const duration = subs.length ? Math.max(...subs.map((s) => s.end), 14) : 14;
+  const duration = videoDuration || (subs.length ? Math.max(...subs.map((s) => s.end), 14) : 14);
 
   useEffect(() => {
+    if (videoUrl) return;
     if (!playing) return;
     lastTickRef.current = performance.now();
     const tick = (now: number) => {
@@ -101,7 +102,14 @@ function Editor() {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [playing, duration]);
+  }, [playing, duration, videoUrl]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !videoUrl) return;
+    if (playing) v.play().catch(() => setPlaying(false));
+    else v.pause();
+  }, [playing, videoUrl]);
 
   const current = subs.find((s) => time >= s.start && time <= s.end);
   const active = subs.find((s) => s.id === activeId);
