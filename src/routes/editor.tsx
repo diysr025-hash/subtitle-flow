@@ -288,8 +288,8 @@ function Editor() {
                   )}
                 </AnimatePresence>
 
-                {/* Playback overlay */}
-                {!generating && (
+                {/* Playback overlay — only when no real video */}
+                {!generating && !videoUrl && (
                   <button
                     onClick={() => setPlaying((p) => !p)}
                     className="absolute inset-0 flex items-center justify-center group"
