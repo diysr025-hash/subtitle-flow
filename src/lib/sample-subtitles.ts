@@ -51,9 +51,38 @@ export function parseSrt(srt: string): Subtitle[] {
   return out;
 }
 
+// Split plain text into evenly-timed cues (~3s each, ~8 words per cue)
+export function splitTextToCues(text: string, opts?: { wordsPerCue?: number; secondsPerCue?: number }): Subtitle[] {
+  const wordsPerCue = opts?.wordsPerCue ?? 8;
+  const secondsPerCue = opts?.secondsPerCue ?? 3;
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+
+  // Prefer sentence-ish chunks first
+  const sentences = clean.split(/(?<=[.!?।])\s+/).filter(Boolean);
+  const chunks: string[] = [];
+  for (const sentence of sentences) {
+    const words = sentence.split(" ");
+    for (let i = 0; i < words.length; i += wordsPerCue) {
+      chunks.push(words.slice(i, i + wordsPerCue).join(" "));
+    }
+  }
+
+  return chunks.map((chunk, i) => ({
+    id: crypto.randomUUID(),
+    start: i * secondsPerCue,
+    end: (i + 1) * secondsPerCue,
+    text: chunk,
+  }));
+}
+
 export function normalizeSubtitles(payload: unknown): Subtitle[] {
   if (!payload) return [];
-  if (typeof payload === "string") return parseSrt(payload);
+  if (typeof payload === "string") {
+    const srt = parseSrt(payload);
+    if (srt.length) return srt;
+    return splitTextToCues(payload);
+  }
   if (Array.isArray(payload)) {
     return payload
       .map((item: any, i: number) => ({
@@ -66,7 +95,8 @@ export function normalizeSubtitles(payload: unknown): Subtitle[] {
   }
   if (typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
-    const candidates = [obj.subtitles, obj.srt, obj.text, obj.captions, obj.data, obj.result];
+    // Prefer Hinglish `text` field from backend
+    const candidates = [obj.text, obj.subtitles, obj.srt, obj.captions, obj.data, obj.result, obj.originalHindi];
     for (const c of candidates) {
       const parsed = normalizeSubtitles(c);
       if (parsed.length) return parsed;

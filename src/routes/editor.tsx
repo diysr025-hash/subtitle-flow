@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Download, FileDown, Pause, Play, Plus, Sparkles, Trash2, Type, Video as VideoIcon, Wand2 } from "lucide-react";
-import { sampleSubtitles, toSrt, type Subtitle } from "@/lib/sample-subtitles";
+import { toSrt, type Subtitle } from "@/lib/sample-subtitles";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/editor")({
@@ -72,15 +72,14 @@ function Editor() {
       }
     }
 
+    // No stored subtitles — show generating spinner briefly, then empty state
     const stageTimer = setInterval(() => {
       setStageIdx((i) => Math.min(i + 1, GENERATION_STAGES.length - 1));
-    }, 900);
+    }, 600);
     const doneTimer = setTimeout(() => {
       if (cancelled) return;
-      setSubs(sampleSubtitles);
-      setActiveId(sampleSubtitles[0].id);
       setGenerating(false);
-    }, 4800);
+    }, 2400);
     return () => { clearInterval(stageTimer); clearTimeout(doneTimer); cancelled = true; };
   }, []);
 
