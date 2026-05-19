@@ -95,8 +95,8 @@ export function normalizeSubtitles(payload: unknown): Subtitle[] {
   }
   if (typeof payload === "object") {
     const obj = payload as Record<string, unknown>;
-    // Prefer Hinglish `text` field from backend
-    const candidates = [obj.text, obj.subtitles, obj.srt, obj.captions, obj.data, obj.result, obj.originalHindi];
+    // Only use the Hinglish `text` field. Never fall back to originalHindi.
+    const candidates = [obj.text, obj.subtitles, obj.srt, obj.captions, obj.result];
     for (const c of candidates) {
       const parsed = normalizeSubtitles(c);
       if (parsed.length) return parsed;
@@ -104,3 +104,9 @@ export function normalizeSubtitles(payload: unknown): Subtitle[] {
   }
   return [];
 }
+
+// Detects Devanagari (Hindi) characters
+const DEVANAGARI_RE = /[\u0900-\u097F]/;
+export const hasDevanagari = (s: string) => DEVANAGARI_RE.test(s);
+export const stripDevanagari = (s: string) =>
+  s.replace(/[\u0900-\u097F]+/g, "").replace(/\s+/g, " ").trim();
