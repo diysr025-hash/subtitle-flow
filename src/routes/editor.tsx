@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Download, FileDown, Pause, Play, Plus, Sparkles, Trash2, Type, Video as VideoIcon, Wand2 } from "lucide-react";
-import { sampleSubtitles, toSrt, type Subtitle } from "@/lib/sample-subtitles";
+import { toSrt, type Subtitle } from "@/lib/sample-subtitles";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/editor")({
