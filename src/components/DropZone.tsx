@@ -47,13 +47,20 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
       console.log("[upload] backend response:", data);
 
       // Backend returns: { success, text: "Hinglish...", originalHindi: "Hindi..." }
-      const hinglishText: string | undefined = data?.text;
-      const subs = hinglishText
-        ? normalizeSubtitles(hinglishText)
-        : normalizeSubtitles(data);
+      // Strictly use `text` (Hinglish). Never fall back to originalHindi.
+      const hinglishText: string | undefined =
+        typeof data?.text === "string" ? data.text : undefined;
+
+      if (!hinglishText || !hinglishText.trim()) {
+        throw new Error("Server did not return Hinglish text.");
+      }
+
+      const subs = normalizeSubtitles(hinglishText)
+        // Defensive: drop any cue that contains Devanagari (Hindi) characters
+        .filter((s) => !/[\u0900-\u097F]/.test(s.text));
 
       if (!subs.length) {
-        throw new Error("No subtitles returned from the server.");
+        throw new Error("No Hinglish subtitles returned from the server.");
       }
 
       sessionStorage.setItem(
