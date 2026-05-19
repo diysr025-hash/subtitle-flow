@@ -26,6 +26,9 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
     setStatus("Uploading video…");
 
     try {
+      // Clear previous subtitle state before new upload
+      sessionStorage.removeItem("subtitleai:result");
+
       const form = new FormData();
       form.append("video", f);
 
@@ -41,7 +44,13 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
 
       setStatus("Processing subtitles…");
       const data = await res.json();
-      const subs = normalizeSubtitles(data);
+      console.log("[upload] backend response:", data);
+
+      // Backend returns: { success, text: "Hinglish...", originalHindi: "Hindi..." }
+      const hinglishText: string | undefined = data?.text;
+      const subs = hinglishText
+        ? normalizeSubtitles(hinglishText)
+        : normalizeSubtitles(data);
 
       if (!subs.length) {
         throw new Error("No subtitles returned from the server.");
@@ -49,7 +58,13 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
 
       sessionStorage.setItem(
         "subtitleai:result",
-        JSON.stringify({ name: f.name, subs, raw: data }),
+        JSON.stringify({
+          name: f.name,
+          subs,
+          text: hinglishText ?? "",
+          language: "Hinglish",
+          raw: data,
+        }),
       );
       try {
         const prev = sessionStorage.getItem("uploadedVideoUrl");
