@@ -56,18 +56,34 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
       const data = await res.json();
       console.log("[upload] backend response:", data);
 
-      // Backend returns: { success, text: "Hinglish...", originalHindi: "Hindi..." }
-      // Strictly use `text` (Hinglish). Never fall back to originalHindi.
+      // Backend now returns timed cues: { success, language, text, cues: [{start,end,text}] }
+      // Prefer `cues` (real timings). Only fall back to plain `text` if cues missing.
+      const rawCues = Array.isArray(data?.cues) ? data.cues : null;
       const hinglishText: string | undefined =
         typeof data?.text === "string" ? data.text : undefined;
 
-      if (!hinglishText || !hinglishText.trim()) {
-        throw new Error("Server did not return Hinglish text.");
+      let subs;
+      if (rawCues && rawCues.length) {
+        subs = rawCues
+          .map((c: any) => ({
+            id: crypto.randomUUID(),
+            start: Number(c.start),
+            end: Number(c.end),
+            text: String(c.text ?? "").trim(),
+          }))
+          .filter((s: any) =>
+            s.text &&
+            Number.isFinite(s.start) &&
+            Number.isFinite(s.end) &&
+            !/[\u0900-\u097F]/.test(s.text),
+          );
+      } else if (hinglishText && hinglishText.trim()) {
+        subs = normalizeSubtitles(hinglishText).filter(
+          (s) => !/[\u0900-\u097F]/.test(s.text),
+        );
+      } else {
+        throw new Error("Server did not return cues or Hinglish text.");
       }
-
-      const subs = normalizeSubtitles(hinglishText)
-        // Defensive: drop any cue that contains Devanagari (Hindi) characters
-        .filter((s) => !/[\u0900-\u097F]/.test(s.text));
 
       if (!subs.length) {
         throw new Error("No Hinglish subtitles returned from the server.");
