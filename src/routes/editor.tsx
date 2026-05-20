@@ -271,7 +271,7 @@ function Editor() {
                   )}
                 </AnimatePresence>
 
-                {/* Subtitle overlay */}
+                {/* Subtitle overlay — pointer-events-none so native <video controls> stay clickable */}
                 <AnimatePresence mode="wait">
                   {!generating && current && (
                     <motion.div
@@ -280,7 +280,7 @@ function Editor() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                      className="absolute bottom-10 left-0 right-0 px-6 text-center"
+                      className="absolute bottom-20 left-0 right-0 px-6 text-center pointer-events-none"
                     >
                       <span
                         className="inline-block max-w-[85%] px-4 py-2 rounded-lg bg-black/30 backdrop-blur-md text-white font-display font-semibold text-lg md:text-2xl"
