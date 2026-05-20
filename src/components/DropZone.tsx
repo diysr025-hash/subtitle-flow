@@ -83,12 +83,6 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
           raw: data,
         }),
       );
-      try {
-        const prev = sessionStorage.getItem("uploadedVideoUrl");
-        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      } catch {}
-      const videoUrl = URL.createObjectURL(f);
-      sessionStorage.setItem("uploadedVideoUrl", videoUrl);
       toast.success("Subtitles ready", { description: `${subs.length} cues generated` });
       navigate({ to: "/editor", search: { name: f.name } as never });
     } catch (err) {
