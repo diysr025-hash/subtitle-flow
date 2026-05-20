@@ -212,7 +212,7 @@ function Editor() {
                     <div className="relative flex flex-col items-center gap-3 text-center px-6">
                       <VideoIcon className="h-12 w-12 text-white/20" />
                       <div className="text-sm text-white/60">
-                        Please upload a video again.
+                        Please upload the video again.
                       </div>
                     </div>
                   </>
