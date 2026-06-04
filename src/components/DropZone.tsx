@@ -62,11 +62,38 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
       const hinglishText: string | undefined =
         typeof data?.text === "string" ? data.text : undefined;
 
+      // Split a cue into short 2-4 word chunks, distributing timing
+      // proportionally across the original cue's duration.
+      const splitCue = (cue: { start: number; end: number; text: string }) => {
+        const words = cue.text.split(/\s+/).filter(Boolean);
+        if (!words.length) return [];
+        const chunks: string[] = [];
+        let i = 0;
+        while (i < words.length) {
+          const remaining = words.length - i;
+          let size = 3;
+          if (remaining <= 4) size = remaining;
+          else if (remaining === 5) size = 3;
+          else if (remaining % 3 === 1) size = 4;
+          chunks.push(words.slice(i, i + size).join(" "));
+          i += size;
+        }
+        const totalWords = words.length;
+        const duration = Math.max(0.001, cue.end - cue.start);
+        let wordsSoFar = 0;
+        return chunks.map((chunk) => {
+          const w = chunk.split(/\s+/).length;
+          const start = cue.start + (wordsSoFar / totalWords) * duration;
+          wordsSoFar += w;
+          const end = cue.start + (wordsSoFar / totalWords) * duration;
+          return { id: crypto.randomUUID(), start, end, text: chunk };
+        });
+      };
+
       let subs;
       if (rawCues && rawCues.length) {
         subs = rawCues
           .map((c: any) => ({
-            id: crypto.randomUUID(),
             start: Number(c.start),
             end: Number(c.end),
             text: String(c.text ?? "").trim(),
@@ -76,11 +103,12 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
             Number.isFinite(s.start) &&
             Number.isFinite(s.end) &&
             !/[\u0900-\u097F]/.test(s.text),
-          );
+          )
+          .flatMap(splitCue);
       } else if (hinglishText && hinglishText.trim()) {
-        subs = normalizeSubtitles(hinglishText).filter(
-          (s) => !/[\u0900-\u097F]/.test(s.text),
-        );
+        subs = normalizeSubtitles(hinglishText)
+          .filter((s) => !/[\u0900-\u097F]/.test(s.text))
+          .flatMap(splitCue);
       } else {
         throw new Error("Server did not return cues or Hinglish text.");
       }
