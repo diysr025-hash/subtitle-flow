@@ -62,31 +62,98 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
       const hinglishText: string | undefined =
         typeof data?.text === "string" ? data.text : undefined;
 
-      // Split a cue into short 2-4 word chunks, distributing timing
-      // proportionally across the original cue's duration.
+      // Phrase pairs that must stay together when chunking.
+      const STICKY_PHRASES: string[][] = [
+        ["welcome", "back"],
+        ["to", "my", "channel"],
+        ["to", "the", "channel"],
+        ["aaj", "hum"],
+        ["aaj", "main"],
+        ["aap", "log"],
+        ["aap", "sab"],
+        ["hello", "guys"],
+        ["hello", "dosto"],
+        ["kaise", "ho"],
+        ["thank", "you"],
+        ["like", "share"],
+        ["like", "and", "subscribe"],
+        ["wale", "hain"],
+        ["wala", "hoon"],
+        ["wali", "hoon"],
+        ["karne", "wale"],
+        ["karne", "wali"],
+        ["karte", "hain"],
+        ["karta", "hoon"],
+        ["karti", "hoon"],
+        ["hone", "wala"],
+        ["hone", "wali"],
+        ["jaa", "raha"],
+        ["jaa", "rahi"],
+        ["ho", "gaya"],
+        ["ho", "gayi"],
+        ["nahi", "tha"],
+        ["nahi", "thi"],
+        ["bahut", "accha"],
+        ["bohot", "saare"],
+      ];
+
+      const matchSticky = (words: string[], i: number): number => {
+        for (const phrase of STICKY_PHRASES) {
+          if (i + phrase.length > words.length) continue;
+          let ok = true;
+          for (let k = 0; k < phrase.length; k++) {
+            const w = words[i + k].toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+            if (w !== phrase[k]) { ok = false; break; }
+          }
+          if (ok) return phrase.length;
+        }
+        return 0;
+      };
+
+      // Split a cue into short 2-4 word chunks, preserving important phrase
+      // pairs and distributing timing proportionally across the cue's duration.
       const splitCue = (cue: { start: number; end: number; text: string }) => {
         const words = cue.text.split(/\s+/).filter(Boolean);
         if (!words.length) return [];
-        const chunks: string[] = [];
+
+        const chunkSizes: number[] = [];
         let i = 0;
         while (i < words.length) {
           const remaining = words.length - i;
-          let size = 3;
-          if (remaining <= 4) size = remaining;
-          else if (remaining === 5) size = 3;
-          else if (remaining % 3 === 1) size = 4;
-          chunks.push(words.slice(i, i + size).join(" "));
+          const sticky = matchSticky(words, i);
+
+          let size: number;
+          if (sticky >= 2 && sticky <= 4) {
+            size = sticky;
+          } else if (remaining <= 4) {
+            size = remaining;
+          } else {
+            size = 3;
+            const s2 = matchSticky(words, i + 2);
+            const s3 = matchSticky(words, i + 3);
+            if (s2 >= 2) size = 2;
+            else if (s3 >= 2) size = 3;
+            else if (remaining % 3 === 1 && remaining >= 5) size = 4;
+          }
+
+          // Avoid orphaning a single trailing word
+          if (remaining - size === 1) size = Math.min(4, remaining);
+
+          chunkSizes.push(size);
           i += size;
         }
+
         const totalWords = words.length;
         const duration = Math.max(0.001, cue.end - cue.start);
         let wordsSoFar = 0;
-        return chunks.map((chunk) => {
-          const w = chunk.split(/\s+/).length;
+        let cursor = 0;
+        return chunkSizes.map((size) => {
           const start = cue.start + (wordsSoFar / totalWords) * duration;
-          wordsSoFar += w;
+          wordsSoFar += size;
           const end = cue.start + (wordsSoFar / totalWords) * duration;
-          return { id: crypto.randomUUID(), start, end, text: chunk };
+          const text = words.slice(cursor, cursor + size).join(" ");
+          cursor += size;
+          return { id: crypto.randomUUID(), start, end, text };
         });
       };
 
@@ -116,6 +183,10 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
       if (!subs.length) {
         throw new Error("No Hinglish subtitles returned from the server.");
       }
+
+      console.log("[subs] raw transcript:", hinglishText);
+      console.log("[subs] backend cues:", rawCues);
+      console.log("[subs] final chunks:", subs);
 
       sessionStorage.setItem(
         "subtitleai:result",
