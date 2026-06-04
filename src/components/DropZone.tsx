@@ -184,6 +184,10 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
         throw new Error("No Hinglish subtitles returned from the server.");
       }
 
+      console.log("[subs] raw transcript:", hinglishText);
+      console.log("[subs] backend cues:", rawCues);
+      console.log("[subs] final chunks:", subs);
+
       sessionStorage.setItem(
         "subtitleai:result",
         JSON.stringify({
