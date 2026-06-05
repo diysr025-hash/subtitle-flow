@@ -240,6 +240,7 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
 
       console.log("[subs] raw transcript:", hinglishText);
       console.log("[subs] backend cues:", rawCues);
+      console.log("[subs] corrected transcript:", rawCues ? logCorrected(rawCues) : cleanText(hinglishText ?? ""));
       console.log("[subs] final chunks:", subs);
 
       sessionStorage.setItem(
