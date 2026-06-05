@@ -63,16 +63,70 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
         typeof data?.text === "string" ? data.text : undefined;
 
       // Phrase pairs that must stay together when chunking.
+      // Common ASR misrecognitions → corrected Roman Hinglish.
+      const CORRECTIONS: Array<[RegExp, string]> = [
+        [/\bto\s+halo\b/gi, "to hello"],
+        [/\bhalo\b/gi, "hello"],
+        [/\bhallo\b/gi, "hello"],
+        [/\bgails\b/gi, "guys"],
+        [/\bgayls\b/gi, "guys"],
+        [/\bgaiz\b/gi, "guys"],
+        [/\bgayz\b/gi, "guys"],
+        [/\bguyz\b/gi, "guys"],
+        [/\bma channel\b/gi, "my channel"],
+        [/\bchannal\b/gi, "channel"],
+        [/\bchainel\b/gi, "channel"],
+        [/\bchanell\b/gi, "channel"],
+        [/\bwelcom\b/gi, "welcome"],
+        [/\bwellcome\b/gi, "welcome"],
+        [/\bbak\b/gi, "back"],
+        [/\bhaldee\b/gi, "haldi"],
+        [/\bhaldii\b/gi, "haldi"],
+        [/\bachhi\b/gi, "acchi"],
+        [/\bachi\b/gi, "acchi"],
+        [/\bacha\b/gi, "accha"],
+        [/\bachha\b/gi, "accha"],
+        [/\bmaze\s*gi\b/gi, "ban jaayegi"],
+        [/\bmazegi\b/gi, "ban jaayegi"],
+        [/\bjayegi\b/gi, "jaayegi"],
+        [/\bjaegi\b/gi, "jaayegi"],
+        [/\bkoi socha\b/gi, "kabhi socha"],
+        [/\bnhi\b/gi, "nahi"],
+        [/\bnahin\b/gi, "nahi"],
+        [/\bchallange\b/gi, "challenge"],
+        [/\blike kr do\b/gi, "like kar do"],
+        [/\bkardo\b/gi, "kar do"],
+        [/\s+/g, " "],
+      ];
+
+      const cleanText = (s: string) => {
+        let out = ` ${s} `;
+        for (const [re, rep] of CORRECTIONS) out = out.replace(re, rep);
+        return out.trim();
+      };
+
       const STICKY_PHRASES: string[][] = [
+        ["hello", "guys"],
+        ["hello", "dosto"],
         ["welcome", "back"],
         ["to", "my", "channel"],
         ["to", "the", "channel"],
+        ["video", "ko"],
+        ["like", "kar", "do"],
+        ["kar", "do"],
+        ["subscribe", "challenge"],
+        ["maine", "kabhi"],
+        ["kabhi", "socha"],
+        ["socha", "nahi"],
+        ["nahi", "tha"],
+        ["nahi", "thi"],
+        ["ban", "jaayegi"],
+        ["itni", "acchi"],
+        ["bahut", "accha"],
         ["aaj", "hum"],
         ["aaj", "main"],
         ["aap", "log"],
         ["aap", "sab"],
-        ["hello", "guys"],
-        ["hello", "dosto"],
         ["kaise", "ho"],
         ["thank", "you"],
         ["like", "share"],
@@ -91,29 +145,30 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
         ["jaa", "rahi"],
         ["ho", "gaya"],
         ["ho", "gayi"],
-        ["nahi", "tha"],
-        ["nahi", "thi"],
-        ["bahut", "accha"],
         ["bohot", "saare"],
       ];
 
+      const norm = (w: string) =>
+        w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+
       const matchSticky = (words: string[], i: number): number => {
+        let best = 0;
         for (const phrase of STICKY_PHRASES) {
           if (i + phrase.length > words.length) continue;
           let ok = true;
           for (let k = 0; k < phrase.length; k++) {
-            const w = words[i + k].toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
-            if (w !== phrase[k]) { ok = false; break; }
+            if (norm(words[i + k]) !== phrase[k]) { ok = false; break; }
           }
-          if (ok) return phrase.length;
+          if (ok && phrase.length > best) best = phrase.length;
         }
-        return 0;
+        return best;
       };
 
-      // Split a cue into short 2-4 word chunks, preserving important phrase
-      // pairs and distributing timing proportionally across the cue's duration.
+      // Kalakar-style: small 1–4 word chunks, sticky phrases preserved,
+      // timing distributed proportionally across the original cue duration.
       const splitCue = (cue: { start: number; end: number; text: string }) => {
-        const words = cue.text.split(/\s+/).filter(Boolean);
+        const cleaned = cleanText(cue.text);
+        const words = cleaned.split(/\s+/).filter(Boolean);
         if (!words.length) return [];
 
         const chunkSizes: number[] = [];
@@ -123,22 +178,18 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
           const sticky = matchSticky(words, i);
 
           let size: number;
-          if (sticky >= 2 && sticky <= 4) {
+          if (sticky >= 1 && sticky <= 4) {
             size = sticky;
-          } else if (remaining <= 4) {
+          } else if (remaining <= 3) {
             size = remaining;
           } else {
             size = 3;
-            const s2 = matchSticky(words, i + 2);
-            const s3 = matchSticky(words, i + 3);
-            if (s2 >= 2) size = 2;
-            else if (s3 >= 2) size = 3;
-            else if (remaining % 3 === 1 && remaining >= 5) size = 4;
+            if (matchSticky(words, i + 2) >= 2) size = 2;
+            else if (matchSticky(words, i + 3) >= 2) size = 3;
+            else if (matchSticky(words, i + 1) >= 2) size = 1;
           }
 
-          // Avoid orphaning a single trailing word
           if (remaining - size === 1) size = Math.min(4, remaining);
-
           chunkSizes.push(size);
           i += size;
         }
@@ -156,6 +207,9 @@ export function DropZone({ compact = false }: { compact?: boolean }) {
           return { id: crypto.randomUUID(), start, end, text };
         });
       };
+
+      const logCorrected = (cues: Array<{ text: string }>) =>
+        cues.map((c) => cleanText(c.text)).join(" | ");
 
       let subs;
       if (rawCues && rawCues.length) {
